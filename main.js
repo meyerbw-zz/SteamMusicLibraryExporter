@@ -4,15 +4,16 @@ const fs = require('fs');
 const path = require('path');
 
 const client = new SteamUser();
+const soundtrackFilename = `soundtracks.csv`;
+const steamScriptFilename = `steamDownloadScript.txt`;
+const userSecrets = JSON.parse(fs.readFileSync(`user-secrets.json`));
 
 function main() {
-    const data = JSON.parse(fs.readFileSync(`user-secrets.json`));
-
-    console.info(`username is ${data.username}`);
+    console.info(`username is ${userSecrets.username}`);
 
     client.logOn({
-        "accountName": data.username,
-        "password": data.password
+        "accountName": userSecrets.username,
+        "password": userSecrets.password
     });
 
     client.on(`loggedOn`, function (details) {
@@ -46,8 +47,9 @@ function main() {
 function processData(data) {
     console.info('Searching for soundtracks...')
 
-    const soundtrackFilename = `soundtracks.csv`;
     let soundtracks = `App Id,App Name,Depot Id,Depot Name,Download Command\n`;
+    let downloadCommands = [];
+    
     const ostRegex = new RegExp(/\bost\b/, `ig`);
 
     for (let key in data) {
@@ -65,6 +67,8 @@ function processData(data) {
                                     soundtracks = `${soundtracks}${entry.appinfo.appid},${entry.appinfo.common.name.replace(/,/g, '')},`;
                                     soundtracks = `${soundtracks}${depotKey}, ${depotInfo.name.replace(/,/g, '')},`;
                                     soundtracks = `${soundtracks}download_depot ${entry.appinfo.appid} ${depotKey}\n`;
+
+                                    downloadCommands.push(`download_depot ${entry.appinfo.appid} ${depotKey}`);
                                 }
                             }
                         }
@@ -74,14 +78,48 @@ function processData(data) {
         }
     }
 
-    fs.writeFile(soundtrackFilename, soundtracks, function (err) {
-        if (err) {
-            return console.log(err);
-        }
+    const writeSoundtrackPromise = new Promise((resolve, reject) => {
+        fs.writeFile(soundtrackFilename, soundtracks, function (err) {
+            if (err) {
+                reject(err)
+            }
 
-        console.log(`Soundtrack listing saved to: ${path.join(process.env.PWD, soundtrackFilename)}`);
-        process.exit();
+            console.log(`Soundtrack listing saved to: ${path.join(process.env.PWD, soundtrackFilename)}`);
+            resolve();
+        });
     });
+
+    const writeScriptPromise = new Promise((resolve, reject) => {
+        fs.writeFile(steamScriptFilename, buildSteamScript(downloadCommands), function (err) {
+            if (err) {
+                reject(err);
+            }
+
+            console.log(`Steam download script saved to: ${path.join(process.env.PWD, steamScriptFilename)}`);
+            resolve();
+        });
+    });
+
+    Promise.all([writeSoundtrackPromise, writeScriptPromise])
+        .then(() => { 
+            process.exit();
+        })
+        .catch((err) => {
+            console.error(err);
+            process.exit(1);
+        });
+}
+
+function buildSteamScript(downloadCommands){
+    let scriptContent = `login ${userSecrets.username}\n`;
+
+    downloadCommands.forEach((command) => {
+        scriptContent = `${scriptContent}${command}\n`;
+    });
+
+    scriptContent = `${scriptContent}quit\n`;
+
+    return scriptContent;
 }
 
 main();

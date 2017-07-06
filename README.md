@@ -1,5 +1,5 @@
 # Description
-Utility to export soundtracks you potentially own through Steam. Will also generate the download depot command that you can paste into the steam client dev console to try to download the soundtrack.
+The node script will generate a `soundtracks.csv` file which contains information about soundtracks you may own based off what things are in your Steam library. It will also generate a `steamDownloadScript.txt` file which is a SteamCMD script that will attempt to download all the soundtracks that it found.
 
 # Usage
 1. Clone the repository

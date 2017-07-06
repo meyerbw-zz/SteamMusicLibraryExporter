@@ -1,5 +1,8 @@
 user-secrets.json
 soundtracks.csv
+steamDownloadScript.txt
+Frameworks
+SteamCMD/*
 
 # Created by https://www.gitignore.io/api/node,macos,visualstudiocode
 
